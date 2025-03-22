@@ -47,7 +47,7 @@ const BORROW_ORACLE_ABI = JSON.parse(
 
 const TOKENS_ABI = [
   "function decimals() view returns (uint8)",
-  "function name() view returns (string)",
+  "function symbol() view returns (string)",
 ];
 
 // Initialize Morpho contracts
@@ -106,13 +106,13 @@ class MorphoMonitor {
         [
           this.loanDecimals,
           this.collateralDecimals,
-          this.loanName,
-          this.collateralName,
+          this.loanSymbol,
+          this.collateralSymbol,
         ] = await Promise.all([
           loanTokenContract.decimals(),
           collateralTokenContract.decimals(),
-          loanTokenContract.name(),
-          collateralTokenContract.name(),
+          loanTokenContract.symbol(),
+          collateralTokenContract.symbol(),
         ]);
       }
 
@@ -288,24 +288,32 @@ class MorphoMonitor {
           data.lltv
         );
 
+        // Calculate USD values
+        const collateralValueUSD = data.collateralAmount * data.collateralPrice;
+        const borrowedValueUSD = data.borrowedAmount * data.borrowPrice;
+
         // Format the values for display
         console.log("-----------------------------------");
         console.log(new Date().toISOString());
+        console.log(
+          `Collateral amount: ${data.collateralAmount.toFixed(4)} ${
+            this.collateralSymbol
+          } ($${collateralValueUSD.toFixed(2)})`
+        );
+        console.log(
+          `Borrowed amount: ${data.borrowedAmount.toFixed(2)} ${
+            this.loanSymbol
+          } ($${borrowedValueUSD.toFixed(2)})`
+        );
+
         console.log(
           `Current LTV: ${currentLtv.toFixed(4)} / LLTV: ${data.lltv.toFixed(
             4
           )}`
         );
         console.log(`Buffer remaining: ${bufferPercentage.toFixed(2)}%`);
+        console.log(`Current price: ${data.collateralPrice.toFixed(4)}`);
         console.log(`Liquidation price: ${liquidationPrice.toFixed(4)}`);
-        console.log(
-          `Borrowed amount: ${data.borrowedAmount.toFixed(2)} ${this.loanName}`
-        );
-        console.log(
-          `Collateral amount: ${data.collateralAmount.toFixed(4)} ${
-            this.collateralName
-          }`
-        );
 
         // Check if we need to send an alert
         if (currentLtv >= data.lltv * LTV_ALERT_THRESHOLD) {
@@ -316,8 +324,8 @@ Current LTV: ${currentLtv.toFixed(4)}
 LLTV Threshold: ${data.lltv.toFixed(4)}
 Buffer remaining: ${bufferPercentage.toFixed(2)}%
 Liquidation price: ${liquidationPrice.toFixed(4)}
-Borrowed amount: ${data.borrowedAmount.toFixed(2)} sUSDS
-Collateral amount: ${data.collateralAmount.toFixed(4)} wstETH
+Borrowed amount: ${data.borrowedAmount.toFixed(2)} ${this.loanSymbol}
+Collateral amount: ${data.collateralAmount.toFixed(4)} ${this.collateralSymbol}
 
 Please consider adding more collateral or repaying part of your loan to avoid liquidation.
           `;
