@@ -6,18 +6,18 @@ const path = require("path");
 // Configuration from environment variables
 const BASE_RPC_URL = process.env.BASE_RPC_URL || "https://mainnet.base.org";
 const MORPHO_ADDRESS =
-  process.env.MORPHO_ADDRESS || "0xBBBBBB0Db76685B64D373A782a5BB5Ce5B5426Bd"; // Replace with actual address
+  process.env.MORPHO_ADDRESS || "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb"; 
 const WALLET_ADDRESS = process.env.WALLET_ADDRESS || "";
 const MARKET_ID = process.env.MARKET_ID || "";
 const COLLATERAL_ORACLE_ADDRESS =
   process.env.COLLATERAL_ORACLE_ADDRESS ||
-  "0xBBBBBB0Db76685B64D373A782a5BB5Ce5B5426Bd"; // Replace with actual address
+  "0xBBBBBB0Db76685B64D373A782a5BB5Ce5B5426Bd"; 
 const BORROW_ORACLE_ADDRESS =
   process.env.DEBT_ORACLE_ADDRESS ||
-  "0xBBBBBB0Db76685B64D373A782a5BB5Ce5B5426Bd"; // Replace with actual address
+  "0xBBBBBB0Db76685B64D373A782a5BB5Ce5B5426Bd"; 
 const LTV_ALERT_THRESHOLD = parseFloat(
-  process.env.LTV_ALERT_THRESHOLD || "0.9"
-); // Alert when LTV reaches 90% of LLTV
+  process.env.LTV_ALERT_THRESHOLD || "0.8"
+); // Alert when LTV reaches 80% of LLTV
 const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL || "300") * 1000; // Convert to milliseconds
 
 // Initialize ethers provider
@@ -27,6 +27,13 @@ const provider = new ethers.JsonRpcProvider(BASE_RPC_URL);
 const MORPHO_ABI = JSON.parse(
   fs.readFileSync(
     path.resolve(__dirname, "contract_abi/morpho_abi.json"),
+    "utf8"
+  )
+);
+
+const MARKET_ORACLE_ABI = JSON.parse(
+  fs.readFileSync(
+    path.resolve(__dirname, "contract_abi/market_oracle_abi.json"),
     "utf8"
   )
 );
