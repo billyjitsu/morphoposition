@@ -45,7 +45,12 @@ const BORROW_ORACLE_ABI = JSON.parse(
   )
 );
 
-// Initialize Morpho contract
+const TOKENS_ABI = [
+  "function decimals() view returns (uint8)",
+  "function name() view returns (string)",
+];
+
+// Initialize Morpho contracts
 const morphoContract = new ethers.Contract(
   MORPHO_ADDRESS,
   MORPHO_ABI,
@@ -86,27 +91,29 @@ class MorphoMonitor {
           lltv: ethers.formatEther(this.marketParams.lltv),
         });
 
-        // Get token decimals
+        // Get token information
         const loanTokenContract = new ethers.Contract(
           this.marketParams.loanToken,
-          ["function decimals() view returns (uint8)"],
+          TOKENS_ABI,
           provider
         );
         const collateralTokenContract = new ethers.Contract(
           this.marketParams.collateralToken,
-          ["function decimals() view returns (uint8)"],
+          TOKENS_ABI,
           provider
         );
 
-        [this.loanDecimals, this.collateralDecimals] = await Promise.all([
+        [
+          this.loanDecimals,
+          this.collateralDecimals,
+          this.loanName,
+          this.collateralName,
+        ] = await Promise.all([
           loanTokenContract.decimals(),
           collateralTokenContract.decimals(),
+          loanTokenContract.name(),
+          collateralTokenContract.name(),
         ]);
-
-        console.log("Token Decimals:", {
-          loanToken: this.loanDecimals,
-          collateralToken: this.collateralDecimals,
-        });
       }
 
       // Get position data
@@ -114,41 +121,45 @@ class MorphoMonitor {
       const borrowShares = position.borrowShares;
       const collateralAmount = position.collateral;
 
-      console.log("Raw Position:", {
-        borrowShares: borrowShares.toString(),
-        collateral: collateralAmount.toString(),
-      });
-      
+      // console.log("Raw Position:", {
+      //   borrowShares: borrowShares.toString(),
+      //   collateral: collateralAmount.toString(),
+      // });
+
       // Get market data for asset/shares conversion
       const marketData = await morphoContract.market(MARKET_ID);
       const totalBorrowAssets = marketData.totalBorrowAssets;
       const totalBorrowShares = marketData.totalBorrowShares;
-      
-      console.log("Market Data:", {
-        totalBorrowAssets: totalBorrowAssets.toString(),
-        totalBorrowShares: totalBorrowShares.toString(),
-      });
-      
+
+      // console.log("Market Data:", {
+      //   totalBorrowAssets: totalBorrowAssets.toString(),
+      //   totalBorrowShares: totalBorrowShares.toString(),
+      // });
+
       // Convert borrowShares to borrowedAssets using SharesMathLib's logic
       // This recreates the toAssetsUp function from the SharesMathLib
       const VIRTUAL_SHARES = 1000000n; // 1e6 as BigInt
       const VIRTUAL_ASSETS = 1n;
-      
+
       // For precision in division, work with BigInts
       const borrowSharesBigInt = BigInt(borrowShares.toString());
       const totalBorrowAssetsBigInt = BigInt(totalBorrowAssets.toString());
       const totalBorrowSharesBigInt = BigInt(totalBorrowShares.toString());
-      
+
       // Implementing mulDivUp logic: (a * b + denominator - 1) / denominator
-      const numerator = borrowSharesBigInt * (totalBorrowAssetsBigInt + VIRTUAL_ASSETS);
+      const numerator =
+        borrowSharesBigInt * (totalBorrowAssetsBigInt + VIRTUAL_ASSETS);
       const denominator = totalBorrowSharesBigInt + VIRTUAL_SHARES;
       const borrowedAssets = (numerator + denominator - 1n) / denominator;
-      
+
       // Format the position values using their respective decimals
       console.log("Formatted Position:", {
         borrowShares: ethers.formatUnits(borrowShares, this.loanDecimals),
         borrowedAssets: ethers.formatUnits(borrowedAssets, this.loanDecimals),
-        collateral: ethers.formatUnits(collateralAmount, this.collateralDecimals),
+        collateral: ethers.formatUnits(
+          collateralAmount,
+          this.collateralDecimals
+        ),
       });
 
       // Get oracle information
@@ -162,12 +173,12 @@ class MorphoMonitor {
         borrowOracleContract.decimals(),
       ]);
 
-      console.log("Oracle values:", {
-        collateralValue: collateralValue.toString(),
-        collateralDecimals,
-        borrowValue: borrowValue.toString(),
-        borrowDecimals,
-      });
+      // console.log("Oracle values:", {
+      //   collateralValue: collateralValue.toString(),
+      //   collateralDecimals,
+      //   borrowValue: borrowValue.toString(),
+      //   borrowDecimals,
+      // });
 
       // Format the raw values using decimals
       const formattedCollateralValue = ethers.formatUnits(
@@ -188,8 +199,12 @@ class MorphoMonitor {
       const lltv = parseFloat(ethers.formatEther(this.marketParams.lltv));
 
       return {
-        borrowedAmount: parseFloat(ethers.formatUnits(borrowedAssets, this.loanDecimals)),
-        collateralAmount: parseFloat(ethers.formatUnits(collateralAmount, this.collateralDecimals)),
+        borrowedAmount: parseFloat(
+          ethers.formatUnits(borrowedAssets, this.loanDecimals)
+        ),
+        collateralAmount: parseFloat(
+          ethers.formatUnits(collateralAmount, this.collateralDecimals)
+        ),
         collateralPrice: parseFloat(formattedCollateralValue),
         borrowPrice: parseFloat(formattedBorrowValue),
         lltv,
@@ -206,8 +221,9 @@ class MorphoMonitor {
     }
 
     // LTV = (borrowedAmount * borrowPrice) / (collateralAmount * collateralPrice)
-    const ltv = (data.borrowedAmount * data.borrowPrice) / 
-                (data.collateralAmount * data.collateralPrice);
+    const ltv =
+      (data.borrowedAmount * data.borrowPrice) /
+      (data.collateralAmount * data.collateralPrice);
 
     return ltv;
   }
@@ -218,8 +234,9 @@ class MorphoMonitor {
     }
 
     // Liquidation price = (borrowedAmount * borrowPrice * lltv) / collateralAmount
-    const liquidationPrice = (data.borrowedAmount * data.borrowPrice) / 
-                             (data.collateralAmount * data.lltv);
+    const liquidationPrice =
+      (data.borrowedAmount * data.borrowPrice) /
+      (data.collateralAmount * data.lltv);
 
     return liquidationPrice;
   }
@@ -281,8 +298,14 @@ class MorphoMonitor {
         );
         console.log(`Buffer remaining: ${bufferPercentage.toFixed(2)}%`);
         console.log(`Liquidation price: ${liquidationPrice.toFixed(4)}`);
-        console.log(`Borrowed amount: ${data.borrowedAmount.toFixed(2)} sUSDS`);
-        console.log(`Collateral amount: ${data.collateralAmount.toFixed(4)} wstETH`);
+        console.log(
+          `Borrowed amount: ${data.borrowedAmount.toFixed(2)} ${this.loanName}`
+        );
+        console.log(
+          `Collateral amount: ${data.collateralAmount.toFixed(4)} ${
+            this.collateralName
+          }`
+        );
 
         // Check if we need to send an alert
         if (currentLtv >= data.lltv * LTV_ALERT_THRESHOLD) {
