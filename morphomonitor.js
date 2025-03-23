@@ -77,6 +77,7 @@ class MorphoMonitor {
     this.marketParams = null;
     this.loanDecimals = null;
     this.collateralDecimals = null;
+    this.oracleContract = null; 
   }
 
   async getPositionData() {
@@ -86,7 +87,7 @@ class MorphoMonitor {
         this.marketParams = await morphoContract.idToMarketParams(MARKET_ID);
 
         // Initialize oracle contract
-        const oracleContract = new ethers.Contract(
+        this.oracleContract = new ethers.Contract(
           this.marketParams.oracle,
           MARKET_ORACLE_ABI,
           provider
@@ -94,8 +95,8 @@ class MorphoMonitor {
 
         // Get oracle feed addresses
         const [baseFeed1, quoteFeed1] = await Promise.all([
-          oracleContract.BASE_FEED_1(),
-          oracleContract.QUOTE_FEED_1(),
+          this.oracleContract.BASE_FEED_1(), // Collateral
+          this.oracleContract.QUOTE_FEED_1(), // Borrow
         ]);
 
         // Initialize oracle contracts with the feed addresses
@@ -181,14 +182,14 @@ class MorphoMonitor {
       const borrowedAssets = (numerator + denominator - 1n) / denominator;
 
       // Format the position values using their respective decimals
-      console.log("Formatted Position:", {
-        borrowShares: ethers.formatUnits(borrowShares, this.loanDecimals),
-        borrowedAssets: ethers.formatUnits(borrowedAssets, this.loanDecimals),
-        collateral: ethers.formatUnits(
-          collateralAmount,
-          this.collateralDecimals
-        ),
-      });
+      // console.log("Formatted Position:", {
+      //   borrowShares: ethers.formatUnits(borrowShares, this.loanDecimals),
+      //   borrowedAssets: ethers.formatUnits(borrowedAssets, this.loanDecimals),
+      //   collateral: ethers.formatUnits(
+      //     collateralAmount,
+      //     this.collateralDecimals
+      //   ),
+      // });
 
       // Get oracle information
       const [collateralValue, collateralDecimals] = await Promise.all([
@@ -221,6 +222,26 @@ class MorphoMonitor {
       console.log("Formatted oracle values:", {
         collateralValue: formattedCollateralValue,
         borrowValue: formattedBorrowValue,
+      });
+
+      // Get market oracle price - now using class property
+      const marketOraclePrice = await this.oracleContract.price();
+      const marketOracleScaledPrice = ethers.formatUnits(marketOraclePrice, 36);
+      // console.log("Market Oracle Price:", {
+      //   rawPrice: marketOraclePrice.toString(),
+      //   scaledPrice: marketOracleScaledPrice,
+      //   description: "Price of collateral in loan token units",
+      // });
+
+      // Compare with our calculated price
+      const calculatedPrice =
+        parseFloat(formattedCollateralValue) / parseFloat(formattedBorrowValue);
+      console.log("Price Comparison:", {
+        marketOraclePrice: marketOracleScaledPrice,
+        calculatedPrice: calculatedPrice.toString(),
+        difference: Math.abs(
+          parseFloat(marketOracleScaledPrice) - calculatedPrice
+        ).toString(),
       });
 
       // Use LLTV from market parameters
