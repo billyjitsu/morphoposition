@@ -6,15 +6,21 @@ const path = require("path");
 // Configuration from environment variables
 const BASE_RPC_URL = process.env.BASE_RPC_URL || "https://mainnet.base.org";
 const MORPHO_ADDRESS =
-  process.env.MORPHO_ADDRESS || "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb"; 
+  process.env.MORPHO_ADDRESS || "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb";
 const WALLET_ADDRESS = process.env.WALLET_ADDRESS || "";
 const MARKET_ID = process.env.MARKET_ID || "";
-const COLLATERAL_ORACLE_ADDRESS =
-  process.env.COLLATERAL_ORACLE_ADDRESS ||
-  "0xBBBBBB0Db76685B64D373A782a5BB5Ce5B5426Bd"; 
-const BORROW_ORACLE_ADDRESS =
-  process.env.DEBT_ORACLE_ADDRESS ||
-  "0xBBBBBB0Db76685B64D373A782a5BB5Ce5B5426Bd"; 
+// Reference: Original oracle addresses from env
+// const COLLATERAL_ORACLE_ADDRESS =
+//   process.env.COLLATERAL_ORACLE_ADDRESS ||
+//   "0xBBBBBB0Db76685B64D373A782a5BB5Ce5B5426Bd";
+// const BORROW_ORACLE_ADDRESS =
+//   process.env.DEBT_ORACLE_ADDRESS ||
+//   "0xBBBBBB0Db76685B64D373A782a5BB5Ce5B5426Bd";
+
+// Will initialize these after getting market parameters
+let collateralOracleContract;
+let borrowOracleContract;
+
 const LTV_ALERT_THRESHOLD = parseFloat(
   process.env.LTV_ALERT_THRESHOLD || "0.8"
 ); // Alert when LTV reaches 80% of LLTV
@@ -64,18 +70,6 @@ const morphoContract = new ethers.Contract(
   provider
 );
 
-const collateralOracleContract = new ethers.Contract(
-  COLLATERAL_ORACLE_ADDRESS,
-  COLLATERAL_ORACLE_ABI,
-  provider
-);
-
-const borrowOracleContract = new ethers.Contract(
-  BORROW_ORACLE_ADDRESS,
-  BORROW_ORACLE_ABI,
-  provider
-);
-
 class MorphoMonitor {
   constructor() {
     this.lastAlertTime = 0;
@@ -90,6 +84,33 @@ class MorphoMonitor {
       // Get market parameters first
       if (!this.marketParams) {
         this.marketParams = await morphoContract.idToMarketParams(MARKET_ID);
+
+        // Initialize oracle contract
+        const oracleContract = new ethers.Contract(
+          this.marketParams.oracle,
+          MARKET_ORACLE_ABI,
+          provider
+        );
+
+        // Get oracle feed addresses
+        const [baseFeed1, quoteFeed1] = await Promise.all([
+          oracleContract.BASE_FEED_1(),
+          oracleContract.QUOTE_FEED_1(),
+        ]);
+
+        // Initialize oracle contracts with the feed addresses
+        collateralOracleContract = new ethers.Contract(
+          baseFeed1,
+          COLLATERAL_ORACLE_ABI,
+          provider
+        );
+
+        borrowOracleContract = new ethers.Contract(
+          quoteFeed1,
+          BORROW_ORACLE_ABI,
+          provider
+        );
+
         console.log("Market Parameters:", {
           loanToken: this.marketParams.loanToken,
           collateralToken: this.marketParams.collateralToken,
