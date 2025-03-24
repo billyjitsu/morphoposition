@@ -365,7 +365,7 @@ class MorphoMonitor {
         console.log(`Liquidation price: ${liquidationPrice.toFixed(4)}`);
 
         // Check if we need to send an alert
-        if (currentLtv >= data.lltv * LTV_ALERT_THRESHOLD) {
+        if (currentLtv >= LTV_ALERT_THRESHOLD) {
           const message = `
 🚨 LIQUIDATION RISK ALERT 🚨
 
