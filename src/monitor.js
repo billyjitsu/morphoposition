@@ -2,7 +2,7 @@ require("dotenv").config();
 const { ethers } = require("ethers");
 const TelegramNotifier = require("./telegram");
 
-// Import contract ABIs directly using require
+// Import contract ABIs
 const MORPHO_ABI = require("../contract_abi/morpho_abi.json");
 const MARKET_ORACLE_ABI = require("../contract_abi/market_oracle_abi.json");
 const COLLATERAL_ORACLE_ABI = require("../contract_abi/collateral_oracle_abi.json");
@@ -13,24 +13,21 @@ const TOKENS_ABI = [
 ];
 
 // Configuration from environment variables
-const BASE_RPC_URL = process.env.BASE_RPC_URL || "https://mainnet.base.org";
+const RPC_URL = process.env.RPC_URL || "https://mainnet.base.org";
 const MORPHO_ADDRESS =
   process.env.MORPHO_ADDRESS || "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb";
 const WALLET_ADDRESS = process.env.WALLET_ADDRESS || "";
 const MARKET_ID = process.env.MARKET_ID || "";
+const LTV_ALERT_THRESHOLD = parseFloat(process.env.LTV_ALERT_THRESHOLD || "0.8"); // Send alert at 80% LTV
+const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL || "300") * 1000; // Check every 5 minutes
+const ALERT_COOLDOWN = parseInt(process.env.ALERT_COOLDOWN || "360") * 1000; // If notified within 6 minutes
 
-// Will initialize these after getting market parameters
+// Initialize these after getting market parameters
 let collateralOracleContract;
 let borrowOracleContract;
 
-// Alert when LTV reaches 80% of LLTV
-const LTV_ALERT_THRESHOLD = parseFloat(
-  process.env.LTV_ALERT_THRESHOLD || "0.8"
-); 
-const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL || "300") * 1000; // Convert to milliseconds
-
 // Initialize ethers provider
-const provider = new ethers.JsonRpcProvider(BASE_RPC_URL);
+const provider = new ethers.JsonRpcProvider(RPC_URL);
 
 // Initialize Morpho contracts
 const morphoContract = new ethers.Contract(
@@ -42,7 +39,7 @@ const morphoContract = new ethers.Contract(
 class MorphoMonitor {
   constructor() {
     this.lastAlertTime = 0;
-    this.alertCooldown = 360 * 1000; // 6 minutes
+    this.alertCooldown = ALERT_COOLDOWN;
     this.marketParams = null;
     this.loanDecimals = null;
     this.collateralDecimals = null;
@@ -281,9 +278,7 @@ class MorphoMonitor {
       return;
     }
 
-    console.log("🚨 ALERT: Position at risk! 🚨");
     console.log(message);
-
     // Send Telegram notification
     await this.telegram.sendMessage(message);
 
@@ -345,16 +340,15 @@ class MorphoMonitor {
         // Check if we need to send an alert
         if (currentLtv >= LTV_ALERT_THRESHOLD) {
           const message = `
-🚨 LIQUIDATION RISK ALERT 🚨
+<b>🚨 LIQUIDATION RISK ALERT 🚨</b>
 
 Current LTV: ${currentLtv.toFixed(4)}
 LLTV Threshold: ${data.lltv.toFixed(4)}
 Buffer remaining: ${bufferPercentage.toFixed(2)}%
+Current price: ${data.collateralPrice.toFixed(4)}
 Liquidation price: ${liquidationPrice.toFixed(4)}
 Borrowed amount: ${data.borrowedAmount.toFixed(2)} ${this.loanSymbol}
 Collateral amount: ${data.collateralAmount.toFixed(4)} ${this.collateralSymbol}
-
-Please consider adding more collateral or repaying part of your loan to avoid liquidation.
           `;
 
           this.logAlert(message);

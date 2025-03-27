@@ -1,7 +1,3 @@
-// Load environment variables from a .env file into process.env
-require("dotenv").config();
-
-// Class to handle Telegram messaging
 class TelegramNotifier {
   constructor(token, channel) {
     this.token = token;
@@ -10,27 +6,29 @@ class TelegramNotifier {
 
   async sendMessage(message) {
     try {
-      // Construct the Telegram API endpoint for sending a message
+      // Using POST method with JSON body for better handling of special characters and formatting
       const request = await fetch(
-        `https://api.telegram.org/bot${this.token}/sendMessage?chat_id=${this.channel}&text=${message}`,
+        `https://api.telegram.org/bot${this.token}/sendMessage`,
         {
-          method: "GET",
-          redirect: "follow",
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            chat_id: this.channel,
+            text: message,
+            parse_mode: "HTML" 
+          })
         }
       );
 
-      // Parse the JSON response from the Telegram API
       const response = await request.json();
-
-      // Return the response object
       return response;
     } catch (error) {
-      // Handle errors by logging them to the console
       console.error("Error sending Telegram message:", error);
       return null;
     }
   }
 }
 
-// Export the TelegramNotifier class
 module.exports = TelegramNotifier;
