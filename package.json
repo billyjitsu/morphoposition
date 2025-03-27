@@ -4,7 +4,7 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "start": "node morphomonitor.js"
+    "start": "node src/morphomonitor.js"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
