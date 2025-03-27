@@ -1,8 +1,16 @@
 require("dotenv").config();
 const { ethers } = require("ethers");
-const fs = require("fs");
-const path = require("path");
 const TelegramNotifier = require("./telegram");
+
+// Import contract ABIs directly using require
+const MORPHO_ABI = require("../contract_abi/morpho_abi.json");
+const MARKET_ORACLE_ABI = require("../contract_abi/market_oracle_abi.json");
+const COLLATERAL_ORACLE_ABI = require("../contract_abi/collateral_oracle_abi.json");
+const BORROW_ORACLE_ABI = require("../contract_abi/debt_oracle_abi.json");
+const TOKENS_ABI = [
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)",
+];
 
 // Configuration from environment variables
 const BASE_RPC_URL = process.env.BASE_RPC_URL || "https://mainnet.base.org";
@@ -10,59 +18,19 @@ const MORPHO_ADDRESS =
   process.env.MORPHO_ADDRESS || "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb";
 const WALLET_ADDRESS = process.env.WALLET_ADDRESS || "";
 const MARKET_ID = process.env.MARKET_ID || "";
-// Reference: Original oracle addresses from env
-// const COLLATERAL_ORACLE_ADDRESS =
-//   process.env.COLLATERAL_ORACLE_ADDRESS ||
-//   "0xBBBBBB0Db76685B64D373A782a5BB5Ce5B5426Bd";
-// const BORROW_ORACLE_ADDRESS =
-//   process.env.DEBT_ORACLE_ADDRESS ||
-//   "0xBBBBBB0Db76685B64D373A782a5BB5Ce5B5426Bd";
 
 // Will initialize these after getting market parameters
 let collateralOracleContract;
 let borrowOracleContract;
 
+// Alert when LTV reaches 80% of LLTV
 const LTV_ALERT_THRESHOLD = parseFloat(
   process.env.LTV_ALERT_THRESHOLD || "0.8"
-); // Alert when LTV reaches 80% of LLTV
+); 
 const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL || "300") * 1000; // Convert to milliseconds
 
 // Initialize ethers provider
 const provider = new ethers.JsonRpcProvider(BASE_RPC_URL);
-
-// Load Morpho ABI
-const MORPHO_ABI = JSON.parse(
-  fs.readFileSync(
-    path.resolve(__dirname, "../contract_abi/morpho_abi.json"),
-    "utf8"
-  )
-);
-
-const MARKET_ORACLE_ABI = JSON.parse(
-  fs.readFileSync(
-    path.resolve(__dirname, "../contract_abi/market_oracle_abi.json"),
-    "utf8"
-  )
-);
-
-const COLLATERAL_ORACLE_ABI = JSON.parse(
-  fs.readFileSync(
-    path.resolve(__dirname, "../contract_abi/collateral_oracle_abi.json"),
-    "utf8"
-  )
-);
-
-const BORROW_ORACLE_ABI = JSON.parse(
-  fs.readFileSync(
-    path.resolve(__dirname, "../contract_abi/debt_oracle_abi.json"),
-    "utf8"
-  )
-);
-
-const TOKENS_ABI = [
-  "function decimals() view returns (uint8)",
-  "function symbol() view returns (string)",
-];
 
 // Initialize Morpho contracts
 const morphoContract = new ethers.Contract(
@@ -375,7 +343,7 @@ class MorphoMonitor {
         console.log(`Liquidation price: ${liquidationPrice.toFixed(4)}`);
 
         // Check if we need to send an alert
-        if (currentLtv >= data.lltv * LTV_ALERT_THRESHOLD) {
+        if (currentLtv >= LTV_ALERT_THRESHOLD) {
           const message = `
 🚨 LIQUIDATION RISK ALERT 🚨
 
