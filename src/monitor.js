@@ -195,7 +195,7 @@ class MorphoMonitor {
         borrowValue: formattedBorrowValue,
       });
 
-      // Get market oracle price - now using class property
+      // Get market oracle price
       const marketOraclePrice = await this.oracleContract.price();
       const marketOracleScaledPrice = ethers.formatUnits(marketOraclePrice, 36);
       // console.log("Market Oracle Price:", {
