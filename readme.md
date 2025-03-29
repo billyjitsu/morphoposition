@@ -1,6 +1,6 @@
 # Morpho Position Monitor
 
-A Node.js script to monitor your Morpho Finance positions and receive liquidation risk alerts via Telegram.
+A Node.js script to monitor your [Morpho Finance](https://morpho.org/) positions and receive liquidation risk alerts via Telegram.
 
 ## Overview
 
