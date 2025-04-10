@@ -1,10 +1,16 @@
 # Morpho Position Monitor
 
 A Node.js script to monitor your [Morpho Finance](https://morpho.org/) positions and receive liquidation risk alerts via Telegram.
+It also includes a vault Monitor to compare the two APY's and a lookin into the strategy allocation.
+
+### Companion videos
+[Liquidation Alert](https://www.youtube.com/watch?v=yoSDkWjLt4g)
+[Vault Monitor](https://www.youtube.com/watch?v=NMCZ7shskTQ)
 
 ## Overview
 
 This tool monitors your Morpho lending/borrowing positions to help prevent liquidations. It continuously checks your Liquidation Loan-to-Value (LLTV) ratio and sends alerts to your Telegram when your position approaches liquidation risk.
+The second portion, allows you to compare APYs of two vaults.  Also give insights to market allocations for each vault.
 
 ### Key Features
 
