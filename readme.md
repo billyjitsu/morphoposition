@@ -35,7 +35,7 @@ This tool monitors your Morpho lending/borrowing positions to help prevent liqui
 
 1. Clone this repository:
    ```
-   git clone https://github.com/yourusername/morpho-monitor.git
+   git clone https://github.com/billyjitsu/morphoposition.git
    cd morpho-monitor
    ```
 
@@ -105,9 +105,14 @@ TOKEN="Your Telegram bot token"
 
 # Channel ID for Telegram
 CHANNEL="Your Telegram channel ID"
+
+# For Vault Monitoring
+# Vault address
+VAULT_1_ADDRESS=0x0FE5b4aF0337Fd5b2E1675D5f5E8c9101E4D3c7e
+VAULT_2_ADDRESS=0xB17B070A56043e1a5a1AB7443AfAFDEbcc1168D7
 ```
 
-### Running the Monitor
+### Running the liquidation Monitor
 
 Start the monitoring script:
 
@@ -117,6 +122,17 @@ npm start
 or
 ```
 yarn start
+```
+### Running the vault Monitor
+
+Start the monitoring script:
+
+```
+npm vaultMonitor
+```
+or
+```
+yarn vaultMonitor
 ```
 
 For production use, consider using a process manager like PM2 or running it on a cloud service.
